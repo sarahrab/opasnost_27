@@ -1,0 +1,247 @@
+can you explain more about danger tokens 
+and did gitlab documentation mean in the disadvantages of Danger bot in "When Danger tokens are rotated, it creates confusion/clutter (as old comments can’t be updated)."? 
+
+Great question — this is one of those “you only understand it after it bites you” parts of Danger.
+
+---
+
+# 🔐 What is a Danger token (in GitLab)?
+
+Danger itself has no identity.
+To comment on a Merge Request in GitLab, it needs authentication.
+
+👉 That’s the **Danger token**.
+
+## In practice, it’s usually:
+
+* A **GitLab Personal Access Token (PAT)** *or*
+* A **Project/Group Access Token**
+
+Stored in CI as:
+
+```bash
+DANGER_GITLAB_API_TOKEN
+```
+
+---
+
+## 🧠 What the token actually does
+
+Danger uses the token to:
+
+* Read MR metadata
+* Fetch changed files
+* **Post comments on the MR**
+
+👉 So every Danger comment is “authored” by whoever owns that token.
+
+---
+
+# 👤 Important detail: identity
+
+If you create the token under:
+
+* `bot-user` → comments appear from “bot-user”
+* your personal account → comments appear from *you*
+
+👉 Best practice:
+Create a dedicated bot user like:
+
+```
+danger-bot
+```
+
+---
+
+# 🔄 What is “token rotation”?
+
+Token rotation = **replacing the token with a new one**
+
+Reasons:
+
+* Security policy
+* Token expired
+* Token leaked
+* Periodic rotation (common in companies)
+
+---
+
+# ⚠️ The confusing part (what GitLab docs mean)
+
+> “When Danger tokens are rotated, it creates confusion/clutter (as old comments can’t be updated).”
+
+Let’s unpack this carefully.
+
+---
+
+## 💥 How Danger normally behaves
+
+Danger usually:
+
+* Finds its **previous comment**
+* Edits it
+* Keeps **one evolving comment**
+
+Example:
+
+```
+❌ Rule failed: YAML invalid
+```
+
+Then after fix:
+
+```
+✅ All checks passed
+```
+
+👉 Same comment gets updated
+
+---
+
+## 😬 What breaks after token rotation
+
+When you rotate the token:
+
+* The **identity changes** (even subtly)
+* Or at least the auth context changes
+
+Now Danger:
+
+❌ **Cannot edit old comments anymore**
+
+Why?
+
+Because GitLab API permissions are tied to:
+
+* the **user who created the comment**
+
+---
+
+## 📌 Result
+
+Instead of updating:
+
+```
+[old comment remains]
+```
+
+Danger posts:
+
+```
+[new comment]
+```
+
+---
+
+## 🧱 What you end up with
+
+```
+Comment 1 (old token): ❌ YAML invalid
+Comment 2 (new token): ❌ YAML invalid
+Comment 3 (new token): ✅ fixed
+```
+
+👉 This is the **“clutter”** they refer to
+
+---
+
+# 🔍 Why exactly it can’t update?
+
+Because GitLab enforces:
+
+> You can only edit comments created by the same user/token
+
+So after rotation:
+
+* Danger is effectively a “different author”
+* Old comments are **read-only**
+
+---
+
+# 🧠 Subtle but important nuance
+
+Even if:
+
+* same username
+* same bot account
+
+👉 If the token belongs to a *different account* → definitely breaks
+👉 If same account but new token → usually OK, but sometimes still fails depending on setup
+
+---
+
+# ✅ How to avoid this problem
+
+## Option 1 — Use a dedicated bot account (best)
+
+* Create: `danger-bot`
+* Always generate tokens from that account
+* Rotate token → same identity → works fine
+
+---
+
+## Option 2 — Don’t rotate aggressively
+
+If not required:
+
+* Keep stable token
+
+---
+
+## Option 3 — Accept multi-comments
+
+Some teams actually prefer:
+
+* history of comments instead of edits
+
+---
+
+## Option 4 — Clean up strategy (advanced)
+
+* Delete old comments via API
+* Or ignore and rely on latest
+
+---
+
+# ⚖️ Is this a big deal?
+
+### Small teams:
+
+👉 Not really
+
+### Large orgs:
+
+👉 Yes, it becomes messy fast
+
+---
+
+# 🧾 Bottom line
+
+* Danger token = **API identity**
+* Comments belong to that identity
+* Rotation can break “edit existing comment” behavior
+* Result = **duplicate comments / clutter**
+
+---
+
+# 💡 Practical advice for you
+
+Given your use case:
+
+👉 Do this:
+
+* Create `danger-bot` user
+* Use its token in CI
+* Rotate token **without changing user**
+
+👉 Avoid:
+
+* using personal tokens
+* switching identities
+
+---
+
+If you want, I can show:
+
+* exact GitLab permissions to give the bot
+* or how to implement Danger-like commenting in Python (which avoids this issue entirely)
