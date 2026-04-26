@@ -1,0 +1,165 @@
+what does adding Danger bot to my semi-gitlab project cost me and what should i do (not the repo owner)  
+
+answer: 
+  Here’s the practical, no-BS breakdown of **cost + what you (as a non–repo owner) actually need to do** when using Danger with GitLab.
+
+---
+
+# 💸 1) What does Danger “cost”?
+
+## 👉 Danger itself
+
+* **$0 — completely free**
+* It’s just a script/tool that runs in CI
+* No license, no paid tier
+
+---
+
+## 👉 What *actually* costs money
+
+Danger runs inside CI → so the cost is:
+
+### A. GitLab CI minutes
+
+* GitLab Free tier includes:
+
+  * **~400 CI minutes/month** ([about.gitlab.com][1])
+* After that:
+
+  * You pay (or use your own runners)
+
+💡 Important:
+
+* Danger jobs are usually **very lightweight** (seconds, not minutes)
+* So cost impact is **almost negligible**
+
+---
+
+### B. Optional: bot user / token
+
+* You might create a bot account or token
+* This does **not cost money directly**
+* Only matters if your org pays per user (rarely an issue)
+
+---
+
+## 👉 Real-world conclusion
+
+* Danger ≈ **free**
+* Cost impact ≈ **tiny CI usage**
+* Biggest “cost” is actually:
+
+  * maintenance
+  * writing rules
+
+---
+
+# 🧠 2) What do *you* need to do (not repo owner)?
+
+This is the part most people misunderstand.
+
+## Scenario A — You are just a developer in the repo
+
+👉 You do **almost nothing**
+
+* Open MR
+* CI runs
+* Danger comments appear
+* You fix issues
+
+That’s it.
+
+👉 You **do NOT**:
+
+* install Danger
+* manage tokens
+* configure CI
+
+---
+
+## Scenario B — You want to *use* / extend Danger but you’re not owner
+
+Then you have 3 realistic options:
+
+---
+
+### Option 1: Suggest changes (most common)
+
+You:
+
+* Edit `Dangerfile`
+* Open MR
+
+Owner:
+
+* Reviews and approves
+
+---
+
+### Option 2: Work in a fork (important limitation)
+
+If you fork:
+
+⚠️ Danger often **won’t comment** on your MR
+
+Why?
+
+* No access to API token in forks ([GitLab Docs][2])
+
+So you’ll see:
+
+* CI runs
+* but **no bot comment**
+
+---
+
+### Option 3: Run locally (for debugging)
+
+```bash
+danger local
+```
+
+* Lets you test rules before pushing
+* Useful if you’re developing rules
+
+---
+
+# ⚙️ 3) What the repo owner had to do (so you don’t have to)
+
+Just so you understand the system:
+
+They configured:
+
+* CI job (`danger-review`)
+* API token (`DANGER_GITLAB_API_TOKEN`)
+* Dangerfile
+
+Example steps include adding token + CI config ([GitLab Docs][2])
+
+---
+
+# 💬 4) How Danger behaves in MR (important detail)
+
+Danger typically:
+
+* Posts **ONE comment**
+* Updates it on every pipeline run ([GitLab Docs][2])
+
+👉 So:
+
+* Not spammy
+* But easy to miss updates
+
+---
+
+# 🧾 Bottom line
+
+### Cost
+
+* Danger: **free**
+* CI usage: **minimal**
+* No hidden fees
+
+
+[1]: https://about.gitlab.com/pricing/?utm_source=chatgpt.com "Pricing"
+[2]: https://docs.gitlab.com/development/dangerbot/?utm_source=chatgpt.com "Danger bot | GitLab Docs"
