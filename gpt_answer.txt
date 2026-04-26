@@ -1,0 +1,122 @@
+i have questions about Danger bot for auto CR (of gitlab).
+1. does the Dangerfile lie in the user's project for each project and gitlab/the bot/ Danger only run it or is the owner decide the content of the Dangerfile and users with the projects who use the Ci just comply to that?
+
+  1) Where does the Dangerfile live, and who controls it?
+
+Short answer: the Dangerfile lives inside each repository, and the repo owner controls it.
+
+Typically it’s at the root: Dangerfile (Ruby) or dangerfile.js (JS) or dangerfile.py
+It is versioned with the project
+GitLab (or your CI runner) just executes it during CI
+The bot (Danger) does not impose rules globally unless you explicitly centralize them
+Common setups:
+
+A. Per-project (most common)
+
+Each repo has its own Dangerfile
+Teams define their own CR rules
+CI job runs Danger
+
+B. Centralized rules (advanced)
+
+You create a shared repo/package with rules
+Each project imports it
+This gives org-wide consistency
+
+👉 So: users don’t “just comply” unless you enforce it via shared config.
+  
+2. what does Dangerfile contain, can you show implementation?
+
+2) see danger file attached. 
+
+3. does Dangerfile can contain rules for specific file in danger file (which is not in project's root),
+supposedly a yaml and i want to check it has field "kookoo" of type list which has at least 2 elements - is it possible to be a rule in Dangerfile? 
+(odc depends on question 1).
+
+3) Can Dangerfile enforce rules on specific files (like YAML)?
+
+Yes—this is one of its main use cases, and your example is absolutely doable.
+
+You can:
+
+Detect changed files
+Open them
+Parse YAML
+Validate structure
+Example: validate a YAML file
+
+Let’s say you want:
+
+file: config/myfile.yaml
+must contain kookoo: []
+at least 2 elements
+  
+import { danger, fail } from "danger";
+import fs from "fs";
+import yaml from "js-yaml";
+
+const files = danger.git.modified_files.concat(danger.git.created_files);
+
+const targetFile = "config/myfile.yaml";
+
+if (files.includes(targetFile)) {
+  const content = fs.readFileSync(targetFile, "utf8");
+  const data = yaml.load(content);
+
+  if (!data.kookoo) {
+    fail("Missing 'kookoo' field in YAML");
+  } else if (!Array.isArray(data.kookoo)) {
+    fail("'kookoo' must be a list");
+  } else if (data.kookoo.length < 2) {
+    fail("'kookoo' must contain at least 2 elements");
+  }
+}
+
+👉 So yes:
+
+It can target any file
+It can validate schema-like rules
+It’s basically arbitrary logic
+
+
+4. does Danger bot writes only one comment per each rule in Dangerfile or can write many per rule . 
+
+4) One comment per rule or multiple?
+
+Danger is flexible here.
+
+You can:
+Post multiple comments per rule
+Post one aggregated comment
+Post inline comments per file/line
+  
+Example (multiple comments)
+
+data.kookoo.forEach((item, i) => {
+  if (!item.name) {
+    fail(`kookoo[${i}] is missing 'name'`);
+  }
+});
+
+➡️ This creates multiple MR comments
+
+You can also group:
+let errors = [];
+
+if (!data.kookoo) {
+  errors.push("Missing kookoo");
+}
+
+if (errors.length) {
+  fail(errors.join("\n"));
+}
+
+➡️ Single comment
+
+Bonus: inline comments on specific file
+fail("Invalid YAML structure", "config/myfile.yaml");
+
+
+---- 
+
+  
